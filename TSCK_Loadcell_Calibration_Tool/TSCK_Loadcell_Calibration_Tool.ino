@@ -4,7 +4,7 @@
 //3/17/20
 //This tool is used to determine the calibration value for the 500kg load cells
 //used in the TSCK Group Lift component.
-//Calibration weight is set at 100 lbs (45.4 kg)
+//Calibration weight is set at 50kg
 //Instructions are provided on a 20x4 LCD screen.
 
 //defines
@@ -18,7 +18,7 @@ Adafruit_LiquidCrystal lcd(3, 2, 4); //clock, data, latch pins for Adafruit LCD 
 NAU7802 myScale; //Create instance of the NAU7802 class
 
 //variables
-float calibrationWeight = 45.4;
+float calibrationWeight = 50.0;
 uint8_t debounce=20;
 
 void setup()
@@ -58,7 +58,7 @@ void calibrateScale() {
 void addWeight() {
   lcd.clear();
   lcd.setCursor(0, 0);
-  lcd.print("ADD 45.4KG. MAKE");
+  lcd.print("ADD 50kg. MAKE");
   lcd.setCursor(0, 1);
   lcd.print("SURE THE WEIGHT");
   lcd.setCursor(0, 2);
