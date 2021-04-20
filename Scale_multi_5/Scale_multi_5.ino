@@ -14,7 +14,6 @@ QWIICMUX myMux; //instance of Qwiic Mux class
 NAU7802 **scale; //create pointer to a set of pointers to the NAU7802 class
 
 //Variables
-
 bool scaleTared [num_of_scales] = {0, 0, 0, 0, 0}; //number of elements must match number of scales
 int proxSensePin [num_of_scales] = {2, 3, 4, 5, 6}; //lift handle postion proximity sensor pins
 long timeStamp[num_of_scales] = {0, 0, 0, 0, 0}; //number of elements must match number of scales
