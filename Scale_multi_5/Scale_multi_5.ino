@@ -5,13 +5,16 @@
 // Modified by David Bailey, Science Museum of MN
 // Date: 4/20/2021
 
+#define num_of_scales 5
+
 #include <Wire.h>
 #include <SparkFun_I2C_Mux_Arduino_Library.h> //Click here to get the library: http://librarymanager/All#SparkFun_I2C_Mux
 #include <SparkFun_Qwiic_Scale_NAU7802_Arduino_Library.h> //Click here to get the library: http://librarymanager/All#SparkFun_NAU8702
-QWIICMUX myMux;
-#define num_of_scales 5
-//#define LOCATION_CALIBRATION_FACTOR 0 //Float, requires 4 bytes of EEPROM
+QWIICMUX myMux; //instance of Qwiic Mux class
 NAU7802 **scale; //create pointer to a set of pointers to the NAU7802 class
+
+//Variables
+
 bool scaleTared [num_of_scales] = {0, 0, 0, 0, 0}; //number of elements must match number of scales
 int proxSensePin [num_of_scales] = {2, 3, 4, 5, 6}; //lift handle postion proximity sensor pins
 long timeStamp[num_of_scales] = {0, 0, 0, 0, 0}; //number of elements must match number of scales
@@ -19,7 +22,7 @@ float CFactor[num_of_scales] = {4357.9, 10899.67, 10857.56, 10899.67, 10899.67};
 float totalWeight = 0;
 long tareDelay = 2000;
 
-//*****Setup*****
+//Setup
 void setup() {
   Serial.begin(9600);
   Wire.begin();
@@ -33,13 +36,12 @@ void setup() {
   if (myMux.begin() == false)
   {
     //Serial.println("Mux not detected. Program halted...");
-    while (1)
-      ;
+    while (1);
   }
   //Serial.println("Mux detected");
   bool initSuccess = true;
 
-  //***configure the scales
+  //Configure the scales
   for (byte x = 0; x < num_of_scales; x++)
   {
     myMux.setPort(x);
@@ -52,7 +54,6 @@ void setup() {
     }
     else
     {
-
       scale[x]->setSampleRate(NAU7802_SPS_320);
       scale[x]->calibrateAFE(); //this line may not be neccesary
       scale[x]->setCalibrationFactor(CFactor[x]); //This is where the calibration factors are read from the array
@@ -68,13 +69,12 @@ void setup() {
   if (initSuccess == false)
   {
     //Serial.print("Program stopped...");
-    while (1)
-      ;
+    while (1);
   }
   //Serial.println("Mux Shield initalized");
 }
 
-//*****Main*****
+//Main
 void loop() {
   totalWeight = 0;
   for (byte x = 0; x < num_of_scales; x++) {
