@@ -40,7 +40,7 @@ class LiftUnit {
 		void update() {
 			if (!initialized) return;
 
-			bool active = !digitalRead(proximityPin);
+			active = digitalRead(proximityPin);
 			if (active) {
 				mux.setPort(port);
 				force = loadCell.getWeight();
