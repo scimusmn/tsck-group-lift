@@ -50,4 +50,5 @@ void loop() {
 	bool active[5];
 	units.getActive(active);
 	leds.show(active, barLevel);
+	delay(100);
 }
