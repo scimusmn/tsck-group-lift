@@ -14,17 +14,17 @@ class LedArray {
 	}
 
 
-	void showFloor(bool s1, bool s2, bool s3, bool s4, bool s5) {
+	void showFloor(bool active[5]) {
 		byte b = 0;
-		if (s1 || s2 || s3 || s4 || s5)
+		if (active[0] || active[1] || active[2] || active[3] || active[4])
 			// at least one is on
 			b |= 1;
 
-		if (s1) b |= 0x20;
-		if (s2) b |= 0x10;
-		if (s3) b |= 0x08;
-		if (s4) b |= 0x04;
-		if (s5) b |= 0x02;
+		if (active[0]) b |= 0x20;
+		if (active[1]) b |= 0x10;
+		if (active[2]) b |= 0x08;
+		if (active[3]) b |= 0x04;
+		if (active[4]) b |= 0x02;
 
 		shiftOut(dataPin, clockPin, LSBFIRST, b);
 	}
@@ -42,10 +42,10 @@ class LedArray {
 	}
 
 
-	void show(bool s1, bool s2, bool s3, bool s4, bool s5, int barLevel) {
+	void show(bool active[5], int barLevel) {
 		digitalWrite(latchPin, 0);
 		fillBar(barLevel);
-		showFloor(s1,s2,s3,s4,s5);
+		showFloor(active);
 		digitalWrite(latchPin, 1);
 	}
 };

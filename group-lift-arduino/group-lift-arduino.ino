@@ -10,16 +10,14 @@
 #define LED_CLOCK 13
 #define LED_LATCH 8
 
+#define CALIBRATION_BUTTON_PIN 7
+
 QWIICMUX mux;
 
 LedArray leds(LED_DATA, LED_CLOCK, LED_LATCH);
 RedLion lcd(9);
 
-LiftUnit unit1(mux, 10899.67, 0, 6);
-LiftUnit unit2(mux, 10857.56, 1, 5);
-LiftUnit unit3(mux, 10899.67, 2, 4);
-LiftUnit unit4(mux,   4357.9, 3, 3);
-LiftUnit unit5(mux, 10899.67, 4, 2);
+CombinedUnits units(CALIBRATION_BUTTON_PIN);
 
 
 void setup() {
@@ -32,45 +30,24 @@ void setup() {
 	}
 	Serial.println("mux initialized");
 
-	unit1.setup();
-	unit2.setup();
-	unit3.setup();
-	unit4.setup();
-	unit5.setup();
+	units.setup(mux);
 	Serial.println("lift units initialized");
 
 	/* blank leds */
-	leds.show(0, 0, 0, 0, 0, 0);
+	bool allOff[] = { false, false, false, false, false };
+	leds.show(allOff, 0);
 
 	lcd.showValue(0);
 }
 
 
 void loop() {
-	unit1.update();
-	unit2.update();
-	unit3.update();
-	unit4.update();
-	unit5.update();
+	units.update();
 
-	float totalForce = 0;
-	totalForce += unit1.getForce();
-	totalForce += unit2.getForce();
-	totalForce += unit3.getForce();
-	totalForce += unit4.getForce();
-	totalForce += unit5.getForce();
+	float force = units.getForce();
+	int barLevel = 24 * (force/500);
 
-	Serial.println(totalForce);
-	//lcd.showValue(abs(totalForce));
-
-	int barLevel = 24 * (totalForce/500);
-
-	leds.show(
-		unit1.isActive(),		
-		unit2.isActive(),
-		unit3.isActive(),
-		unit4.isActive(),
-		unit5.isActive(), 
-		barLevel
-	);
+	bool active[5];
+	units.getActive(active);
+	leds.show(active, barLevel);
 }

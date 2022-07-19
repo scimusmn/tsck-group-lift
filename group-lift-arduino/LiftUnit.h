@@ -1,8 +1,27 @@
 #pragma once
 
+#include <EEPROM.h>
 #include <SparkFun_Qwiic_Scale_NAU7802_Arduino_Library.h>
 #include <SparkFun_I2C_Mux_Arduino_Library.h>
 #include "IntervalTimer.h"
+#include "Button.h"
+
+
+#define UNIT_0_MUX_PORT 0
+#define UNIT_1_MUX_PORT 1
+#define UNIT_2_MUX_PORT 2
+#define UNIT_3_MUX_PORT 3
+#define UNIT_4_MUX_PORT 4
+
+#define UNIT_0_PROXIMITY_PORT 6
+#define UNIT_1_PROXIMITY_PORT 5
+#define UNIT_2_PROXIMITY_PORT 4
+#define UNIT_3_PROXIMITY_PORT 3
+#define UNIT_4_PROXIMITY_PORT 2
+
+
+#define CALIBRATION_FORCE 50.0
+
 
 class LiftUnit {
 	protected:
@@ -45,6 +64,12 @@ class LiftUnit {
 				Serial.println(" failed to initialized!");
 			}
 		}
+
+		float calibrate() {
+			mux.setPort(port);
+			loadCell.calculateCalibrationFactor(CALIBRATION_FORCE, 64);
+			return loadCell.getCalibrationFactor();
+		}
 	
 		
 		void update() {
@@ -79,5 +104,118 @@ class LiftUnit {
 		float getForce() {
 			if (!active) return 0;
 			return force;
+		}
+};
+
+
+class CombinedUnits : public smm::Button {
+	protected:
+		LiftUnit *units[5];
+		IntervalTimer calibrationTimer;
+	
+	public:
+		CombinedUnits(int calibrationButtonPin) 
+			: Button(calibrationButtonPin),
+			  calibrationTimer(5000)
+			{}
+
+		void onPress() {
+			calibrationTimer.start();
+		}
+
+		void onRelease() {
+			calibrationTimer.stop();
+		}
+
+		void setup(QWIICMUX& mux) {
+			float calibrationValues[5];
+			for (int i=0; i<5; i++) {
+				size_t address = i * sizeof(float);
+				float f;
+				EEPROM.get(address, f);
+				calibrationValues[i] = f == 0 ? 10000 : f;
+			}
+			units[0] = new LiftUnit(
+				mux, 
+				calibrationValues[0], 
+				UNIT_0_MUX_PORT,
+				UNIT_0_PROXIMITY_PORT
+			);
+			units[0]->setup();
+			units[1] = new LiftUnit(
+				mux, 
+				calibrationValues[1], 
+				UNIT_1_MUX_PORT,
+				UNIT_1_PROXIMITY_PORT
+			);
+			units[1]->setup();
+			units[2] = new LiftUnit(
+				mux, 
+				calibrationValues[2], 
+				UNIT_2_MUX_PORT,
+				UNIT_2_PROXIMITY_PORT
+			);
+			units[2]->setup();
+			units[3] = new LiftUnit(
+				mux, 
+				calibrationValues[3], 
+				UNIT_3_MUX_PORT,
+				UNIT_3_PROXIMITY_PORT
+			);
+			units[3]->setup();
+			units[4] = new LiftUnit(
+				mux, 
+				calibrationValues[4], 
+				UNIT_4_MUX_PORT,
+				UNIT_4_PROXIMITY_PORT
+			);
+			units[4]->setup();
+		}
+
+
+		void update() {
+			if (calibrationTimer.triggered()) {
+				bool active[5];
+				getActive(active);
+				// make sure exactly one load cell is active
+				int numActive = 0;
+				int activeIndex = 0;
+				for (int i=0; i<5; i++) {
+					if (active[i]) { 
+						numActive += 1;
+						activeIndex = i;
+					}
+				}
+
+				if (activeIndex != 1) {
+					Serial.println("exactly one load cell must be lifted for calibration to succeed!");
+				}
+				else {
+					float factor = units[activeIndex]->calibrate();
+					// save calibration to EEPROM
+					size_t address = activeIndex * sizeof(float);
+					EEPROM.put(address, factor);
+				}
+			}
+			for (int i=0; i<5; i++) {
+				units[i]->update();
+			}
+		}
+
+
+		float getForce() {
+			float total = 0;
+			for (int i=0; i<5; i++) {
+				total += units[i]->getForce();
+			}
+			return total;
+		}
+
+	
+		void getActive(bool active[5]) {
+			for (int i=0; i<5; i++) {
+				active[i] = units[i]->isActive();
+			}
+			return active;
 		}
 };
