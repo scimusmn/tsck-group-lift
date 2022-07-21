@@ -90,7 +90,10 @@ class LiftUnit {
 			active = proximity;
 
 			/* check if we should zero the scale yet */
-			if (zeroTimer.triggered()) loadCell.calculateZeroOffset();
+			if (zeroTimer.triggered()) {
+				mux.setPort(port);
+				loadCell.calculateZeroOffset();
+			}
 
 			/* get load cell value */
 			if (active) {
