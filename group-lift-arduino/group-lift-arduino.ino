@@ -33,16 +33,15 @@ void setup() {
 	units.setup(mux);
 	Serial.println("lift units initialized");
 
-	/* blank leds */
+	// blank leds
 	bool allOff[] = { false, false, false, false, false };
 	leds.show(allOff, 0);
-
-	lcd.showValue(0);
+	lcd.showValue(100);
 }
 
 
 void loop() {
-	units.update();
+	units.Update();
 
 	float force = units.getForce();
 	int barLevel = 24 * (force/500);
@@ -50,4 +49,6 @@ void loop() {
 	bool active[5];
 	units.getActive(active);
 	leds.show(active, barLevel);
+	lcd.showValue(force);
+	delay(100);
 }

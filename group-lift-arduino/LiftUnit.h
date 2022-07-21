@@ -1,5 +1,6 @@
 #pragma once
 
+#include <math.h>
 #include <EEPROM.h>
 #include <SparkFun_Qwiic_Scale_NAU7802_Arduino_Library.h>
 #include <SparkFun_I2C_Mux_Arduino_Library.h>
@@ -46,6 +47,10 @@ class LiftUnit {
 
 
 		void setup() {
+			Serial.print("initializing load cell on mux port ");
+			Serial.print(port);
+			Serial.print(" with calibration factor ");
+			Serial.println(calibrationFactor);
 			/* prox sensor */
 			pinMode(proximityPin, INPUT_PULLUP);
 
@@ -85,7 +90,10 @@ class LiftUnit {
 			active = proximity;
 
 			/* check if we should zero the scale yet */
-			if (zeroTimer.triggered()) loadCell.calculateZeroOffset();
+			if (zeroTimer.triggered()) {
+				mux.setPort(port);
+				loadCell.calculateZeroOffset();
+			}
 
 			/* get load cell value */
 			if (active) {
@@ -120,6 +128,7 @@ class CombinedUnits : public smm::Button {
 			{}
 
 		void onPress() {
+			Serial.println("hold for calibration...");
 			calibrationTimer.start();
 		}
 
@@ -133,6 +142,7 @@ class CombinedUnits : public smm::Button {
 				size_t address = i * sizeof(float);
 				float f;
 				EEPROM.get(address, f);
+				if (isnan(f)) f = 0;
 				calibrationValues[i] = f == 0 ? 10000 : f;
 			}
 			units[0] = new LiftUnit(
@@ -173,7 +183,8 @@ class CombinedUnits : public smm::Button {
 		}
 
 
-		void update() {
+		void Update() {
+			update();
 			if (calibrationTimer.triggered()) {
 				bool active[5];
 				getActive(active);
@@ -187,11 +198,16 @@ class CombinedUnits : public smm::Button {
 					}
 				}
 
-				if (activeIndex != 1) {
+				if (numActive != 1) {
 					Serial.println("exactly one load cell must be lifted for calibration to succeed!");
+					for (int i=0; i<5; i++) Serial.println(active[i]);
 				}
 				else {
 					float factor = units[activeIndex]->calibrate();
+					Serial.print("calibrated unit ");
+					Serial.print(activeIndex);
+					Serial.print(" with factor ");
+					Serial.println(factor);
 					// save calibration to EEPROM
 					size_t address = activeIndex * sizeof(float);
 					EEPROM.put(address, factor);
