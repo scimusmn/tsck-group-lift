@@ -24,6 +24,7 @@
 #define CALIBRATION_FORCE 50.0
 
 
+/** defines a single load cell unit package */
 class LiftUnit {
 	protected:
 		QWIICMUX& mux;
@@ -58,18 +59,26 @@ class LiftUnit {
 			mux.setPort(port);
 			if (loadCell.begin()) {
 				initialized = true;
+				// load cell initialized correctly so we can configure it
 				loadCell.setSampleRate(NAU7802_SPS_320);
 				loadCell.setCalibrationFactor(calibrationFactor);
 				loadCell.calculateZeroOffset();
 				loadCell.setGain(NAU7802_GAIN_64);
 			}
 			else {
+				// load cell did not initialize correctly!
 				Serial.print("WARNING: load cell on mux port ");
 				Serial.print(port);
 				Serial.println(" failed to initialized!");
 			}
 		}
 
+		/** Calibrate the load cell
+		 *
+		 * This function should be called when there is a force equivalent to
+		 * CALIBRATION_FORCE on the load cell. It returns the computed
+		 * calibration factor.
+		 */
 		float calibrate() {
 			mux.setPort(port);
 			loadCell.calculateCalibrationFactor(CALIBRATION_FORCE, 64);
@@ -116,6 +125,7 @@ class LiftUnit {
 };
 
 
+/** combines multiple load cell units into a single object */
 class CombinedUnits : public smm::Button {
 	protected:
 		LiftUnit *units[5];
@@ -127,24 +137,31 @@ class CombinedUnits : public smm::Button {
 			  calibrationTimer(5000)
 			{}
 
+		/* start the calibration timer when holding the button */
 		void onPress() {
 			Serial.println("hold for calibration...");
 			calibrationTimer.start();
 		}
 
+		/* stop the calibration timer when the button is released */
 		void onRelease() {
 			calibrationTimer.stop();
 		}
 
 		void setup(QWIICMUX& mux) {
+			// load the calibration values from EEPROM
 			float calibrationValues[5];
 			for (int i=0; i<5; i++) {
 				size_t address = i * sizeof(float);
 				float f;
 				EEPROM.get(address, f);
-				if (isnan(f)) f = 0;
+				if (isnan(f)) f = 0; // bad values are loaded as 0 instead
+				// zeroes are treated as 10,000 so that bad data
+				// or a fresh arduino has reasonable defaults for calibration factors
 				calibrationValues[i] = f == 0 ? 10000 : f;
 			}
+
+			// set up the units
 			units[0] = new LiftUnit(
 				mux, 
 				calibrationValues[0], 
@@ -184,7 +201,10 @@ class CombinedUnits : public smm::Button {
 
 
 		void Update() {
+			// update the button-checking code (i know this is ugly -- i'm sorry, i was out of time)
 			update();
+
+			// check if we should calibrate
 			if (calibrationTimer.triggered()) {
 				bool active[5];
 				getActive(active);
@@ -199,10 +219,12 @@ class CombinedUnits : public smm::Button {
 				}
 
 				if (numActive != 1) {
+					// we should not calibrate
 					Serial.println("exactly one load cell must be lifted for calibration to succeed!");
 					for (int i=0; i<5; i++) Serial.println(active[i]);
 				}
 				else {
+					// we should calibrate!
 					float factor = units[activeIndex]->calibrate();
 					Serial.print("calibrated unit ");
 					Serial.print(activeIndex);
@@ -213,12 +235,15 @@ class CombinedUnits : public smm::Button {
 					EEPROM.put(address, factor);
 				}
 			}
+
+			// update the units
 			for (int i=0; i<5; i++) {
 				units[i]->update();
 			}
 		}
 
 
+		// get the total force on all load cells
 		float getForce() {
 			float total = 0;
 			for (int i=0; i<5; i++) {
@@ -227,7 +252,8 @@ class CombinedUnits : public smm::Button {
 			return total;
 		}
 
-	
+
+		// populate the array with which load cells are presently active
 		void getActive(bool active[5]) {
 			for (int i=0; i<5; i++) {
 				active[i] = units[i]->isActive();
