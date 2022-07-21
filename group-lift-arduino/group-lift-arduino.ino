@@ -21,15 +21,18 @@ CombinedUnits units(CALIBRATION_BUTTON_PIN);
 
 
 void setup() {
+	// initialize buses
 	Serial.begin(115200);
 	Wire.begin();
 
+	// initialize multiplexer
 	if (!mux.begin()) {
 		Serial.println("FATAL: mux failed to initialize!");
 		blinkError(ERROR_MUX_FAILURE);
 	}
 	Serial.println("mux initialized");
 
+	// initialize lift units
 	units.setup(mux);
 	Serial.println("lift units initialized");
 
@@ -41,14 +44,18 @@ void setup() {
 
 
 void loop() {
+	// update lift units
 	units.Update();
 
 	float force = units.getForce();
 	int barLevel = 24 * (force/500);
 
+	// determine which units are being used
 	bool active[5];
 	units.getActive(active);
+	// update the LEDs
 	leds.show(active, barLevel);
+	// update the lcd
 	lcd.showValue(force);
 	delay(100);
 }
